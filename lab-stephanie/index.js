@@ -2,7 +2,7 @@
 
 const net = require('net');
 const server = net.createServer();
-const clientPool = [];
+let clientPool = [];
 
 server.on('connection', (socket) => {
   console.log('connected to socket');
@@ -12,32 +12,43 @@ server.on('connection', (socket) => {
   let handleDisconnect = () => {
     console.log(`${socket.nickname} left the chat`);
     clientPool = clientPool.filter(item => item !== socket);
-  }
-
-  socket.on('error', handleDisconnect)
-  socket.on('close', handleDisconnect)
+  };
+  let handleTroll = (msg, arg) => {
+    for(let i =0; i <arg; i++) {
+      socket.write(msg);
+    }
+  };
+  socket.on('error', handleDisconnect);
+  socket.on('close', handleDisconnect);
 
   socket.on('data', (buffer) => {
     let data = buffer.toString();
     clientPool.forEach(socket => {
       socket.write(buffer.toString());
-      if(data.startsWith('/nickname')) {
+      if(data.startsWith('/nick')) {
 
-        let nickname = socket.nickname = data.split('/nickname')[1].trim() || socket.nickname; //shortcircuiting
+        let nickname = socket.nickname = data.split('/nick')[1].trim() || socket.nickname; //shortcircuiting
         socket.nickname = socket.nickname.trim();
         socket.write(`you are now known as ${socket.nickname}`);
         return;
-      };
-      
-      //if they type in "/dm Stephanie how are you?"''
+      }
+
+      if(data.startsWith('/quit')) {
+        handleDisconnect();
+      }
+
+      if(data.startsWith('/troll')) {
+        handleTroll();
+      }
+
       if(data.startsWith('/dm')) {
         let content = data.split('/dm') || '';
-        //returns "Stephanie how are you"
+        return content;
       }
 
       clientPool.forEach((user) => {
-        user.write(`${socket.nickname}: ${data}`)
-      })
+        user.write(`${socket.nickname}: ${data}`);
+      });
     });
   });
 });
