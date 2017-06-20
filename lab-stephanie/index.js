@@ -2,20 +2,32 @@
 
 const net = require('net');
 const server = net.createServer();
-let clientPool = [];
+let clients = [];
+
+function Client(socket) {
+  this.socket = socket;
+  this.name = socket.nickname || Math.floor(Math.random() +1);
+}
 
 server.on('connection', (socket) => {
+  let user = new Client(socket);
   console.log('connected to socket');
   socket.write('welcome to the chat room!');
-  clientPool =[...clientPool, socket]; //similar to .push
+  clients =[...clients, socket]; //similar to .push
 
   let handleDisconnect = () => {
     console.log(`${socket.nickname} left the chat`);
-    clientPool = clientPool.filter(item => item !== socket);
+    clients = clients.filter(item => item !== socket);
   };
   let handleTroll = (msg, arg) => {
-    for(let i =0; i <arg; i++) {
-      socket.write(msg);
+    let i =0;
+    for(i =0; i <arg; i++) {
+      clients.forEach(socket => socket.write(`${msg}\n`));
+    }
+  };
+  let handleDm = (user, msg) => {
+    for(let i =0; i < clients.length; i++) {
+      clients.forEach(user => (user.nickname === this.name) ? socket.write(msg): console.log('user not found'));
     }
   };
   socket.on('error', handleDisconnect);
@@ -23,14 +35,15 @@ server.on('connection', (socket) => {
 
   socket.on('data', (buffer) => {
     let data = buffer.toString();
-    clientPool.forEach(socket => {
+    clients.forEach(socket => {
       socket.write(buffer.toString());
       if(data.startsWith('/nick')) {
 
         let nickname = socket.nickname = data.split('/nick')[1].trim() || socket.nickname; //shortcircuiting
         socket.nickname = socket.nickname.trim();
         socket.write(`you are now known as ${socket.nickname}`);
-        return;
+        console.log(user);
+        return nickname;
       }
 
       if(data.startsWith('/quit')) {
@@ -38,15 +51,14 @@ server.on('connection', (socket) => {
       }
 
       if(data.startsWith('/troll')) {
-        handleTroll();
+        handleTroll(data.split('/troll')[1].trim(), data.split('')[1].trim());
       }
 
       if(data.startsWith('/dm')) {
-        let content = data.split('/dm') || '';
-        return content;
+        handleDm(data.split('')[1].trim(), data.split(''));
       }
 
-      clientPool.forEach((user) => {
+      clients.forEach((user) => {
         user.write(`${socket.nickname}: ${data}`);
       });
     });
@@ -54,4 +66,3 @@ server.on('connection', (socket) => {
 });
 
 server.listen(3000, () => console.log('server up on port 3000'));
-//sockets listen for data, errors, and close
